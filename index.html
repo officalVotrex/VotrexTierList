@@ -1481,419 +1481,439 @@
 
 
 <script>
-
     /* =========================
        PLAYER DATABASE
     ========================= */
 
-    const players = [
+    const PLAYER_DATA_URL =
+        "https://raw.githubusercontent.com/officalvotrex/VotrexTierList/main/players.json";
 
-        {
-            name: "Votrex_Salut",
-            tier: "HT3",
-            tierClass: "ht3",
-            trophies: 0,
-            money: "€0"
-        }
-
-    ];
-
-
-    const skinURL =
-        "https://mc-heads.net/skin/Votrex_Salut";
-
-
+    let players = [];
+    let currentPlayer = null;
     let homeViewer = null;
     let statsViewer = null;
 
+    const tierOrder = [
+        "HT1", "lt1", "HT2", "lt2", "HT3",
+        "lt3", "HT4", "lt4", "HT5", "lt5"
+    ];
+
+    function formatMoney(value) {
+        const amount = Number(value) || 0;
+        return "€" + amount.toLocaleString("en-US");
+    }
+
+    function tierClass(tier) {
+        return String(tier || "").toLowerCase();
+    }
+
+    function sortPlayers(list) {
+        return [...list].sort((a, b) => {
+            const aTier = tierOrder.indexOf(a.tier);
+            const bTier = tierOrder.indexOf(b.tier);
+            const safeATier = aTier === -1 ? 999 : aTier;
+            const safeBTier = bTier === -1 ? 999 : bTier;
+
+            if (safeATier !== safeBTier) return safeATier - safeBTier;
+            if (b.trophies !== a.trophies) return b.trophies - a.trophies;
+            return b.money - a.money;
+        });
+    }
+
+    async function loadPlayers() {
+        try {
+            const response = await fetch(
+                PLAYER_DATA_URL + "?t=" + Date.now(),
+                { cache: "no-store" }
+            );
+
+            if (!response.ok) {
+                throw new Error("Could not load players.json: " + response.status);
+            }
+
+            const data = await response.json();
+
+            players = Object.values(data).map(player => ({
+                name: player.name,
+                tier: player.tier,
+                tierClass: tierClass(player.tier),
+                trophies: Number(player.pokale) || 0,
+                money: Number(player.geld) || 0
+            }));
+
+            players = sortPlayers(players);
+            renderTopThree();
+            renderLeaderboard();
+        } catch (error) {
+            console.error("Player data loading error:", error);
+            players = [];
+            renderTopThree();
+            renderLeaderboard();
+        }
+    }
 
     /* =========================
        3D VIEWER
     ========================= */
 
-    function createViewer(canvasId) {
-
-        const canvas =
-            document.getElementById(canvasId);
+    function createViewer(canvasId, playerName) {
+        const canvas = document.getElementById(canvasId);
 
         if (!canvas || !window.skinview3d) {
             return null;
         }
 
-        const viewer =
-            new skinview3d.SkinViewer({
+        const viewer = new skinview3d.SkinViewer({
+            canvas: canvas,
+            width: canvas.width,
+            height: canvas.height,
+            skin: "https://mc-heads.net/skin/" +
+                encodeURIComponent(playerName)
+        });
 
-                canvas: canvas,
+        viewer.background = 0x050505;
+        viewer.zoom = 0.75;
+        viewer.autoRotate = false;
 
-                width: canvas.width,
-
-                height: canvas.height,
-
-                skin: skinURL
-
-            });
-
-
-        viewer.background =
-            0x050505;
-
-        viewer.zoom =
-            0.75;
-
-        viewer.autoRotate =
-            false;
-
-
-        const controls =
-            skinview3d.createOrbitControls(viewer);
-
-
-        controls.enableRotate =
-            true;
-
-        controls.enableZoom =
-            true;
-
-        controls.enablePan =
-            false;
-
+        const controls = skinview3d.createOrbitControls(viewer);
+        controls.enableRotate = true;
+        controls.enableZoom = true;
+        controls.enablePan = false;
 
         return viewer;
-
     }
 
+    function refreshHomeViewer(playerName) {
+        if (homeViewer) {
+            try {
+                homeViewer.dispose();
+            } catch (error) {}
+            homeViewer = null;
+        }
 
-    /* HOME SKIN */
-
-    try {
-
-        homeViewer =
-            createViewer("viewer1");
-
-    } catch (error) {
-
-        console.log(
-            "Home viewer error:",
-            error
-        );
-
+        try {
+            homeViewer = createViewer("viewer1", playerName);
+        } catch (error) {
+            console.log("Home viewer error:", error);
+        }
     }
 
+    /* =========================
+       TOP 3
+    ========================= */
+
+    function renderTopThree() {
+        const container = document.querySelector(".top3");
+        if (!container) return;
+
+        container.innerHTML = "";
+
+        for (let index = 0; index < 3; index++) {
+            const player = players[index];
+
+            if (!player) {
+                container.insertAdjacentHTML("beforeend", `
+                    <div class="player-card empty">
+                        <div class="place">#${index + 1}</div>
+                        <div class="empty-text">No player yet</div>
+                    </div>
+                `);
+                continue;
+            }
+
+            const card = document.createElement("div");
+            card.className = "player-card";
+
+            if (index === 0) {
+                card.innerHTML = `
+                    <div class="place">#1</div>
+                    <div class="viewer">
+                        <canvas id="viewer1" width="220" height="245"></canvas>
+                    </div>
+                    <div class="player-name"></div>
+                    <div class="tier"></div>
+                    <div class="stats">
+                        <div>
+                            <span class="stat-label">Trophies</span>
+                            <span class="stat-value">🏆 ${player.trophies.toLocaleString("en-US")}</span>
+                        </div>
+                        <div>
+                            <span class="stat-label">Money</span>
+                            <span class="stat-value">${formatMoney(player.money)}</span>
+                        </div>
+                    </div>
+                `;
+                card.querySelector(".player-name").textContent = player.name;
+                const tierElement = card.querySelector(".tier");
+                tierElement.textContent = player.tier;
+                tierElement.classList.add(player.tierClass);
+            } else {
+                card.innerHTML = `
+                    <div class="place">#${index + 1}</div>
+                    <div class="viewer">
+                        <canvas id="topViewer${index + 1}" width="220" height="245"></canvas>
+                    </div>
+                    <div class="player-name"></div>
+                    <div class="tier"></div>
+                    <div class="stats">
+                        <div>
+                            <span class="stat-label">Trophies</span>
+                            <span class="stat-value">🏆 ${player.trophies.toLocaleString("en-US")}</span>
+                        </div>
+                        <div>
+                            <span class="stat-label">Money</span>
+                            <span class="stat-value">${formatMoney(player.money)}</span>
+                        </div>
+                    </div>
+                `;
+                card.querySelector(".player-name").textContent = player.name;
+                const tierElement = card.querySelector(".tier");
+                tierElement.textContent = player.tier;
+                tierElement.classList.add(player.tierClass);
+            }
+
+            container.appendChild(card);
+
+            if (index > 0) {
+                try {
+                    createViewer("topViewer" + (index + 1), player.name);
+                } catch (error) {
+                    console.log("Top player viewer error:", error);
+                }
+            }
+        }
+
+        if (players[0]) {
+            refreshHomeViewer(players[0].name);
+        }
+    }
+
+    /* =========================
+       LEADERBOARD
+    ========================= */
+
+    function renderLeaderboard() {
+        const container = document.querySelector(".leaderboard");
+        if (!container) return;
+
+        container.innerHTML = `
+            <div class="leader-row header-row">
+                <div>Rank</div>
+                <div>Player</div>
+                <div>Tier</div>
+                <div>Trophies</div>
+                <div>Money</div>
+            </div>
+        `;
+
+        if (players.length === 0) {
+            container.insertAdjacentHTML("beforeend", `
+                <div class="leader-row">
+                    <div>—</div>
+                    <div class="leader-player">No players yet</div>
+                    <div>—</div>
+                    <div>—</div>
+                    <div>—</div>
+                </div>
+            `);
+            return;
+        }
+
+        players.forEach((player, index) => {
+            const row = document.createElement("div");
+            row.className = "leader-row";
+            row.innerHTML = `
+                <div class="rank ${index === 0 ? "first" : ""}">#${index + 1}</div>
+                <div class="leader-player"></div>
+                <div class="leader-tier"><span class="tier"></span></div>
+                <div class="leader-stat">🏆 ${player.trophies.toLocaleString("en-US")}</div>
+                <div class="leader-stat">${formatMoney(player.money)}</div>
+            `;
+
+            row.querySelector(".leader-player").textContent = player.name;
+            const tierElement = row.querySelector(".tier");
+            tierElement.textContent = player.tier;
+            tierElement.classList.add(player.tierClass);
+
+            container.appendChild(row);
+        });
+    }
 
     /* =========================
        PAGE ELEMENTS
     ========================= */
 
-    const homePage =
-        document.getElementById("homePage");
-
-    const leaderboardPage =
-        document.getElementById("leaderboardPage");
-
-    const statsPage =
-        document.getElementById("statsPage");
-
-    const notFound =
-        document.getElementById("notFound");
-
-    const footer =
-        document.getElementById("footer");
-
-    const homeNav =
-        document.getElementById("homeNav");
-
-    const leaderboardNav =
-        document.getElementById("leaderboardNav");
-
+    const homePage = document.getElementById("homePage");
+    const leaderboardPage = document.getElementById("leaderboardPage");
+    const statsPage = document.getElementById("statsPage");
+    const notFound = document.getElementById("notFound");
+    const footer = document.getElementById("footer");
+    const homeNav = document.getElementById("homeNav");
+    const leaderboardNav = document.getElementById("leaderboardNav");
 
     /* =========================
        SHOW HOME
     ========================= */
 
     function showHome() {
-
-        homePage.style.display =
-            "block";
-
-        leaderboardPage.style.display =
-            "none";
-
-        statsPage.style.display =
-            "none";
-
-        notFound.style.display =
-            "none";
-
-        footer.style.display =
-            "block";
-
+        homePage.style.display = "block";
+        leaderboardPage.style.display = "none";
+        statsPage.style.display = "none";
+        notFound.style.display = "none";
+        footer.style.display = "block";
 
         homeNav.classList.add("active");
-
         leaderboardNav.classList.remove("active");
 
-
-        window.scrollTo({
-            top: 0,
-            behavior: "smooth"
-        });
-
+        window.scrollTo({ top: 0, behavior: "smooth" });
     }
-
 
     /* =========================
        SHOW LEADERBOARD
     ========================= */
 
     function showLeaderboard() {
-
-        homePage.style.display =
-            "none";
-
-        leaderboardPage.style.display =
-            "block";
-
-        statsPage.style.display =
-            "none";
-
-        notFound.style.display =
-            "none";
-
-        footer.style.display =
-            "block";
-
+        homePage.style.display = "none";
+        leaderboardPage.style.display = "block";
+        statsPage.style.display = "none";
+        notFound.style.display = "none";
+        footer.style.display = "block";
 
         homeNav.classList.remove("active");
-
         leaderboardNav.classList.add("active");
 
-
-        window.scrollTo({
-            top: 0,
-            behavior: "smooth"
-        });
-
+        window.scrollTo({ top: 0, behavior: "smooth" });
     }
-
 
     /* =========================
        SHOW PLAYER STATS
     ========================= */
 
-    function showStats() {
+    function showStats(player) {
+        if (!player) return;
 
-        homePage.style.display =
-            "none";
+        currentPlayer = player;
 
-        leaderboardPage.style.display =
-            "none";
-
-        notFound.style.display =
-            "none";
-
-        statsPage.style.display =
-            "block";
-
-        footer.style.display =
-            "none";
-
+        homePage.style.display = "none";
+        leaderboardPage.style.display = "none";
+        notFound.style.display = "none";
+        statsPage.style.display = "block";
+        footer.style.display = "none";
 
         homeNav.classList.remove("active");
-
         leaderboardNav.classList.remove("active");
 
+        document.querySelector(".stats-title").innerHTML = "";
+        const titleName = document.createElement("span");
+        titleName.textContent = player.name;
+        document.querySelector(".stats-title").append(
+            titleName,
+            document.createTextNode("'s Stats")
+        );
+
+        document.querySelector(".stats-username").textContent = player.name;
+
+        const bigTier = document.querySelector(".big-tier");
+        bigTier.textContent = player.tier;
+        bigTier.className = "tier big-tier " + player.tierClass;
+
+        const bigStats = document.querySelectorAll(".big-stat-value");
+        bigStats[0].textContent = "🏆 " + player.trophies.toLocaleString("en-US");
+        bigStats[1].textContent = formatMoney(player.money);
 
         if (statsViewer) {
-
             try {
-
                 statsViewer.dispose();
-
             } catch (error) {}
-
             statsViewer = null;
-
         }
-
 
         try {
-
-            statsViewer =
-                createViewer("statsViewer");
-
+            statsViewer = createViewer("statsViewer", player.name);
         } catch (error) {
-
-            console.log(
-                "Stats viewer error:",
-                error
-            );
-
+            console.log("Stats viewer error:", error);
         }
 
-
-        window.scrollTo({
-            top: 0,
-            behavior: "smooth"
-        });
-
+        window.scrollTo({ top: 0, behavior: "smooth" });
     }
-
 
     /* =========================
        SEARCH
     ========================= */
 
     function searchPlayer() {
-
-        const input =
-            document
-                .getElementById("playerSearch")
-                .value
-                .trim()
-                .toLowerCase();
-
+        const input = document
+            .getElementById("playerSearch")
+            .value
+            .trim()
+            .toLowerCase();
 
         if (input === "") {
-
             showHome();
-
             return;
-
         }
 
-
-        const player =
-            players.find(function(player) {
-
-                return player.name
-                    .toLowerCase() === input;
-
-            });
-
+        const player = players.find(
+            player => player.name.toLowerCase() === input
+        );
 
         if (player) {
-
-            showStats();
-
+            showStats(player);
             return;
-
         }
 
-
-        homePage.style.display =
-            "none";
-
-        leaderboardPage.style.display =
-            "none";
-
-        statsPage.style.display =
-            "none";
-
-        footer.style.display =
-            "none";
-
-        notFound.style.display =
-            "block";
-
+        homePage.style.display = "none";
+        leaderboardPage.style.display = "none";
+        statsPage.style.display = "none";
+        footer.style.display = "none";
+        notFound.style.display = "block";
 
         homeNav.classList.remove("active");
-
         leaderboardNav.classList.remove("active");
 
-
-        window.scrollTo({
-            top: 0,
-            behavior: "smooth"
-        });
-
+        window.scrollTo({ top: 0, behavior: "smooth" });
     }
-
 
     /* =========================
        NAVIGATION
     ========================= */
 
-    homeNav.addEventListener(
+    homeNav.addEventListener("click", function() {
+        document.getElementById("playerSearch").value = "";
+        showHome();
+    });
+
+    leaderboardNav.addEventListener("click", function() {
+        document.getElementById("playerSearch").value = "";
+        showLeaderboard();
+    });
+
+    document.getElementById("searchButton").addEventListener(
+        "click",
+        searchPlayer
+    );
+
+    document.getElementById("playerSearch").addEventListener(
+        "keydown",
+        function(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                searchPlayer();
+            }
+        }
+    );
+
+    document.getElementById("backButton").addEventListener(
         "click",
         function() {
-
-            document
-                .getElementById("playerSearch")
-                .value = "";
-
+            document.getElementById("playerSearch").value = "";
             showHome();
-
         }
     );
 
+    /* LOAD LIVE PLAYER DATA */
 
-    leaderboardNav.addEventListener(
-        "click",
-        function() {
-
-            document
-                .getElementById("playerSearch")
-                .value = "";
-
-            showLeaderboard();
-
-        }
-    );
-
-
-    /* =========================
-       SEARCH BUTTON
-    ========================= */
-
-    document
-        .getElementById("searchButton")
-        .addEventListener(
-            "click",
-            searchPlayer
-        );
-
-
-    /* =========================
-       ENTER SEARCH
-    ========================= */
-
-    document
-        .getElementById("playerSearch")
-        .addEventListener(
-            "keydown",
-            function(event) {
-
-                if (event.key === "Enter") {
-
-                    event.preventDefault();
-
-                    searchPlayer();
-
-                }
-
-            }
-        );
-
-
-    /* =========================
-       BACK BUTTON
-    ========================= */
-
-    document
-        .getElementById("backButton")
-        .addEventListener(
-            "click",
-            function() {
-
-                document
-                    .getElementById("playerSearch")
-                    .value = "";
-
-                showHome();
-
-            }
-        );
-
+    loadPlayers();
 </script>
 
 </body>
