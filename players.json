@@ -34,5 +34,11 @@
         "tier": "lt3",
         "pokale": 0,
         "geld": 0
+    },
+    "9900fps": {
+        "name": "9900fps",
+        "tier": "lt5",
+        "pokale": 0,
+        "geld": 0
     }
 }
