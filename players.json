@@ -49,9 +49,14 @@
     },
     "givemethatbounty": {
         "name": "givemethatbounty",
+        "tier": "lt3",
+        "pokale": 0,
+        "geld": 0
+    },
+    "node bot.js": {
+        "name": "node bot.js",
         "tier": "lt4",
         "pokale": 0,
         "geld": 0
     }
-    
 }
