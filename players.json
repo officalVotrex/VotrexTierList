@@ -58,5 +58,11 @@
         "tier": "lt4",
         "pokale": 0,
         "geld": 0
+    },
+    "zmyhz": {
+        "name": "zmyhz",
+        "tier": "lt3",
+        "pokale": 0,
+        "geld": 0
     }
 }
