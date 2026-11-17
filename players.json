@@ -70,5 +70,11 @@
         "tier": "lt5",
         "pokale": 0,
         "geld": 0
+    },
+    "mateo130712": {
+        "name": "Mateo130712",
+        "tier": "HT5",
+        "pokale": 0,
+        "geld": 0
     }
 }
