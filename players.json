@@ -82,5 +82,11 @@
         "tier": "HT5",
         "pokale": 0,
         "geld": 0
+    },
+    "bbderw": {
+        "name": "bbderw",
+        "tier": "lt2",
+        "pokale": 0,
+        "geld": 0
     }
 }
