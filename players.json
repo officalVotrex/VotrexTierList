@@ -88,5 +88,11 @@
         "tier": "HT5",
         "pokale": 0,
         "geld": 0
+    },
+    "dripmaster030": {
+        "name": "Dripmaster030",
+        "tier": "lt3",
+        "pokale": 0,
+        "geld": 0
     }
 }
