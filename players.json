@@ -94,5 +94,11 @@
         "tier": "lt3",
         "pokale": 0,
         "geld": 0
+    },
+    "zg1h": {
+        "name": "zg1h",
+        "tier": "lt2",
+        "pokale": 0,
+        "geld": 0
     }
 }
