@@ -100,5 +100,11 @@
         "tier": "HT3",
         "pokale": 0,
         "geld": 0
+    },
+    "gameair92310647": {
+        "name": "GameAir92310647",
+        "tier": "lt3",
+        "pokale": 0,
+        "geld": 0
     }
 }
