@@ -106,5 +106,11 @@
         "tier": "lt3",
         "pokale": 0,
         "geld": 0
+    },
+    "muro2011": {
+        "name": "Muro2011",
+        "tier": "lt4",
+        "pokale": 0,
+        "geld": 0
     }
 }
